@@ -4,6 +4,8 @@ A Python script that checks your Groups.io mailing lists and produces a daily di
 
 No external libraries required. Runs on Windows, macOS, and Linux.
 
+<img width="1321" height="928" alt="Groups-io Digest" src="https://github.com/user-attachments/assets/4838520d-19ed-4210-810b-a03b251b8de6" />
+
 ---
 
 ## What it does
