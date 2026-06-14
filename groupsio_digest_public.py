@@ -166,7 +166,7 @@ def build_html_report(results, lookback_days, generated_at):
         topics = r["data"]["topics"]
         base = group_url(r["group"])
         topic_items = "".join(
-            (f'<li><a href="{base}/topic/{t["id"]}" target="_blank">{t["subject"]}</a> <span class="msg-count">({t["count"]})</span></li>'
+            (f'<li><a href="{base}/topic/{t["id"]}" target="_blank" rel="noopener noreferrer">{t["subject"]}</a> <span class="msg-count">({t["count"]})</span></li>'
              if t.get("id") else
              f'<li>{t["subject"]} <span class="msg-count">({t["count"]})</span></li>')
             for t in topics[:5]
@@ -174,7 +174,7 @@ def build_html_report(results, lookback_days, generated_at):
         active_rows += f"""
         <div class="group-card active">
           <div class="group-header">
-            <a class="group-name" href="{url}" target="_blank">{name}</a>
+            <a class="group-name" href="{url}" target="_blank" rel="noopener noreferrer">{name}</a>
             <span class="badge">{total} msg{'s' if total != 1 else ''}</span>
           </div>
           <ul class="topic-list">{topic_items}</ul>
