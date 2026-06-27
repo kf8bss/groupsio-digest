@@ -50,7 +50,7 @@ GROUPS = [
     # --- Misc Subgroups ----
     {"name": "JS8Call",               "group": "main",                               "domain": "js8call.groups.io"},
     {"name": "Packtenna",             "group": "main",                               "domain": "packtenna.groups.io"},
-    {"name": "EMComm RatPack":        "group": "main",                               "domain": "sec-emcomm.groups.io"},
+    {"name": "EMComm RatPack",        "group": "main",                               "domain": "sec-emcomm.groups.io"},
 ]
 
 # ---------------------------------------------------------------------------
