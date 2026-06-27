@@ -23,7 +23,7 @@ API_KEY = "648b455bac3c15d9069f51ed23ea8412aff4f9cdcf6d56957c0f5fa8582d4aea"   #
 
 LOOKBACK_DAYS = 7               # How many days back to check
 
-OUTPUT_DIR = Path.home() / "Documents" / "GroupsIO_Digest"
+OUTPUT_DIR = Path.home() / "Documents" / "Groups.io Digest"
 
 GROUPS = [
     # ── General groups ────────────────────────────────────────────────────
@@ -169,7 +169,7 @@ def build_html_report(results, lookback_days, generated_at):
             (f'<li><a href="{base}/topic/{t["id"]}" target="_blank" rel="noopener noreferrer">{t["subject"]}</a> <span class="msg-count">({t["count"]})</span></li>'
              if t.get("id") else
              f'<li>{t["subject"]} <span class="msg-count">({t["count"]})</span></li>')
-            for t in topics[:5]
+            for t in topics[:20]
         )
         active_rows += f"""
         <div class="group-card active">
@@ -287,7 +287,7 @@ def build_text_report(results, lookback_days, generated_at):
         lines.append(f"{'─' * 60}")
         lines.append(f"  {name}  [{total} message{'s' if total != 1 else ''}]")
         lines.append(f"  {group_url(r['group'])}")
-        for t in topics[:5]:
+        for t in topics[:20]:
             lines.append(f"    • {t['subject']}  ({t['count']})")
         lines.append("")
 
