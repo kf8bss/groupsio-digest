@@ -23,7 +23,7 @@ API_KEY = "648b455bac3c15d9069f51ed23ea8412aff4f9cdcf6d56957c0f5fa8582d4aea"   #
 
 LOOKBACK_DAYS = 7               # How many days back to check
 
-OUTPUT_DIR = Path.home() / "Documents" / "Groups.io Digest"
+OUTPUT_DIR = Path.home() / "Documents" / "Groups.io Digests"
 
 GROUPS = [
     # ── General groups ────────────────────────────────────────────────────
