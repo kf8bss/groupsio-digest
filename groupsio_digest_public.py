@@ -355,7 +355,8 @@ def main():
         print("\nERROR: Please open groupsio_digest.py in a text editor")
         print("       and replace YOUR_API_KEY_HERE with your actual API key.")
         print("       Get one at: https://groups.io/settings/apikeys")
-        input("\nPress Enter to exit...")
+        if not os.environ.get("CI"):
+            input("\nPress Enter to exit...")
         sys.exit(1)
 
     # Verify key
@@ -365,7 +366,8 @@ def main():
         print("OK")
     except RuntimeError as e:
         print(f"FAILED\n\nError: {e}")
-        input("\nPress Enter to exit...")
+        if not os.environ.get("CI"):
+            input("\nPress Enter to exit...")
         sys.exit(1)
 
     # Create output directory
@@ -428,7 +430,8 @@ def main():
     print(f"  HTML:  {html_path}")
     print(f"  Text:  {txt_path}")
     print()
-    input("Press Enter to exit...")
+    if not os.environ.get("CI"):
+        input("Press Enter to exit...")
 
 
 if __name__ == "__main__":
