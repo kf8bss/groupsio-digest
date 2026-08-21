@@ -1,0 +1,46 @@
+name: Run Groups.io Digest
+
+on:
+  schedule:
+    # 11:00 UTC ≈ 7:00 AM Eastern (shifts to 6:00 AM during EDT — adjust if you care about exact local time)
+    - cron: "0 11 * * *"
+  workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
+
+jobs:
+  run-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out script repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Run digest script
+        env:
+          GROUPSIO_API_KEY: ${{ secrets.GROUPSIO_API_KEY }}
+          GROUPSIO_GROUPS_JSON: ${{ secrets.GROUPSIO_GROUPS_JSON }}
+          GROUPSIO_OUTPUT_DIR: ${{ github.workspace }}/output
+        run: python groupsio_digest_public.py
+
+      - name: Check out site repo
+        uses: actions/checkout@v4
+        with:
+          repository: kf8bss/groupsio-digest-site
+          token: ${{ secrets.SITE_REPO_TOKEN }}
+          path: site-repo
+
+      - name: Copy report into site repo
+        run: |
+          cp -r output/* site-repo/
+
+      - name: Commit and push report
+        working-directory: site-repo
+        run: |
+          git config user.name "groupsio-digest-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --quiet --cached || git commit -m "Update digest report $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
