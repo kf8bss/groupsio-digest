@@ -36,6 +36,12 @@ jobs:
         run: |
           cp -r output/* site-repo/
 
+      - name: Prune old dated backups, keep only the 5 most recent
+        working-directory: site-repo
+        run: |
+          ls -1 digest_*.html 2>/dev/null | sort | head -n -5 | xargs -r rm -f
+          ls -1 digest_*.txt  2>/dev/null | sort | head -n -5 | xargs -r rm -f
+
       - name: Commit and push report
         working-directory: site-repo
         run: |
