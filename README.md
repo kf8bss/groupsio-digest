@@ -137,6 +137,18 @@ Some group owners disable API access to their archive. There's nothing you can d
 
 They'll appear in a neutral *API access restricted* section rather than the error list.
 
+### Groups with members-only archives
+
+Some groups allow API access but have closed archives — meaning you can fetch activity data as a member, but non-members can't follow topic links or read thread subjects. If you publish your digest publicly (on a blog or website), mark these groups with `"members_only": True`:
+
+```python
+{"name": "Example Group", "group": "example", "domain": "groups.io", "members_only": True},
+```
+
+The script will still fetch and count messages for these groups, but will omit topic titles and links from the report. They appear in a separate "Members Only" section showing only the group name and message count.
+
+This is different from `"restricted": True`, which skips the group entirely because the owner has disabled API access.
+
 ---
 
 ## Running the script

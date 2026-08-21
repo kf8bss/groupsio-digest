@@ -30,6 +30,7 @@ except ImportError:
     print("       API key and group list before running this script.")
     sys.exit(1)
 
+
 # ---------------------------------------------------------------------------
 # API helpers
 # ---------------------------------------------------------------------------
@@ -100,16 +101,23 @@ def fetch_group_topics(group_info, api_key, lookback_days):
             pass
 
     total_msgs = sum(t.get("num_messages", 1) for t in recent)
-    topics = [
-        {
-            "subject": t.get("subject") or "(no subject)",
-            "count": t.get("num_messages", 1),
-            "id": t.get("id"),
-        }
-        for t in recent[:10]
-    ]
 
-    return {"total": total_msgs, "topics": topics}
+    # For members-only groups we still count messages but don't expose subjects/IDs,
+    # since non-members cannot follow the links or read the thread titles.
+    members_only = group_info.get("members_only", False)
+    if members_only:
+        topics = []
+    else:
+        topics = [
+            {
+                "subject": t.get("subject") or "(no subject)",
+                "count": t.get("num_messages", 1),
+                "id": t.get("id"),
+            }
+            for t in recent[:10]
+        ]
+
+    return {"total": total_msgs, "topics": topics, "members_only": members_only}
 
 
 # ---------------------------------------------------------------------------
@@ -125,9 +133,10 @@ def group_url(group_info):
 
 
 def build_html_report(results, lookback_days, generated_at):
-    active   = [r for r in results if r.get("data") and r["data"]["total"] > 0]
-    quiet    = [r for r in results if r.get("data") and r["data"]["total"] == 0]
-    errors   = [r for r in results if r.get("error")]
+    active        = [r for r in results if r.get("data") and r["data"]["total"] > 0 and not r["data"].get("members_only")]
+    members_only  = [r for r in results if r.get("data") and r["data"].get("members_only")]
+    quiet         = [r for r in results if r.get("data") and r["data"]["total"] == 0 and not r["data"].get("members_only")]
+    errors        = [r for r in results if r.get("error")]
 
     # Sort active groups by message count descending
     active.sort(key=lambda r: r["data"]["total"], reverse=True)
@@ -157,6 +166,21 @@ def build_html_report(results, lookback_days, generated_at):
           <ul class="topic-list">{topic_items}</ul>
         </div>"""
 
+    members_only_rows = ""
+    for r in members_only:
+        name  = r["group"]["name"]
+        url   = group_url(r["group"])
+        total = r["data"]["total"]
+        count_str = f"{total} msg{'s' if total != 1 else ''}" if total > 0 else "no activity"
+        members_only_rows += f"""
+        <div class="group-card members-only">
+          <div class="group-header">
+            <a class="group-name" href="{url}" target="_blank" rel="noopener noreferrer">{name}</a>
+            <span class="badge mo-badge">{count_str}</span>
+          </div>
+          <p class="mo-note">Members-only archive &mdash; topic details not shown</p>
+        </div>"""
+
     quiet_names = " &middot; ".join(r["group"]["name"] for r in quiet) if quiet else ""
     quiet_section = f"""
         <div class="group-card quiet">
@@ -176,72 +200,78 @@ def build_html_report(results, lookback_days, generated_at):
         </div>""" if errors else ""
 
     total_groups = len(results)
-    total_msgs   = sum(r["data"]["total"] for r in active)
+    total_msgs = sum(r["data"]["total"] for r in active)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Groups.io Digest &mdash; {date_str}</title>
-<style>
-  *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-         background: #f5f5f0; color: #1a1a1a; padding: 2rem 1rem; font-size: 15px; }}
-  .container {{ max-width: 740px; margin: 0 auto; }}
-  h1 {{ font-size: 24px; font-weight: 600; margin-bottom: 4px; }}
-  .meta {{ font-size: 13px; color: #777; margin-bottom: 1.5rem; }}
-  .stats {{ display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }}
-  .stat {{ background: #fff; border: 1px solid #e5e5e5; border-radius: 8px;
-           padding: .6rem 1rem; font-size: 13px; color: #555; }}
-  .stat strong {{ font-size: 20px; font-weight: 600; color: #1a1a1a; display: block; }}
-  .group-card {{ background: #fff; border: 1px solid #e5e5e5; border-radius: 10px;
-                 padding: 1rem 1.25rem; margin-bottom: .75rem; }}
-  .group-card.quiet {{ background: #fafafa; }}
-  .group-card.error-card {{ border-color: #f5c6c6; background: #fff8f8; }}
-  .group-header {{ display: flex; align-items: baseline; gap: .75rem; margin-bottom: .5rem; flex-wrap: wrap; }}
-  .group-name {{ font-size: 15px; font-weight: 600; color: #1a1a1a; text-decoration: none; }}
-  .group-name:hover {{ text-decoration: underline; }}
-  .group-name.muted {{ color: #888; font-weight: 500; }}
-  .group-name.err {{ color: #c0392b; }}
-  .badge {{ font-size: 11px; background: #e8f5e9; color: #2e7d32;
-            padding: 2px 8px; border-radius: 20px; font-weight: 500; white-space: nowrap; }}
-  .topic-list {{ list-style: none; padding: 0; }}
-  .topic-list li {{ font-size: 13px; color: #444; padding: 3px 0;
-                    border-bottom: 1px solid #f0f0f0; }}
-  .topic-list li:last-child {{ border-bottom: none; }}
-  .msg-count {{ color: #aaa; font-size: 12px; }}
-  .topic-list a {{ color: #2563ab; text-decoration: none; }}
-  .topic-list a:hover {{ text-decoration: underline; }}
-  .quiet-list {{ font-size: 13px; color: #999; line-height: 1.7; }}
-  .error-row {{ font-size: 13px; color: #c0392b; margin-top: 4px; }}
-  .footer {{ font-size: 12px; color: #aaa; text-align: center; margin-top: 2rem; }}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Groups.io Digest &mdash; {date_str}</title>
+  <style>
+    *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f5f0; color: #1a1a1a; padding: 2rem 1rem; font-size: 15px; }}
+    .container {{ max-width: 740px; margin: 0 auto; }}
+    h1 {{ font-size: 24px; font-weight: 600; margin-bottom: 4px; }}
+    .meta {{ font-size: 13px; color: #777; margin-bottom: 1.5rem; }}
+    .stats {{ display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }}
+    .stat {{ background: #fff; border: 1px solid #e5e5e5; border-radius: 8px;
+             padding: .6rem 1rem; font-size: 13px; color: #555; }}
+    .stat strong {{ font-size: 20px; font-weight: 600; color: #1a1a1a; display: block; }}
+    .group-card {{ background: #fff; border: 1px solid #e5e5e5; border-radius: 10px;
+                   padding: 1rem 1.25rem; margin-bottom: .75rem; }}
+    .group-card.quiet {{ background: #fafafa; }}
+    .group-card.members-only {{ background: #fafafa; border-color: #d0d8e8; }}
+    .group-card.error-card {{ border-color: #f5c6c6; background: #fff8f8; }}
+    .group-header {{ display: flex; align-items: baseline; gap: .75rem; margin-bottom: .5rem; flex-wrap: wrap; }}
+    .group-name {{ font-size: 15px; font-weight: 600; color: #1a1a1a; text-decoration: none; }}
+    .group-name:hover {{ text-decoration: underline; }}
+    .group-name.muted {{ color: #888; font-weight: 500; }}
+    .group-name.err {{ color: #c0392b; }}
+    .badge {{ font-size: 11px; background: #e8f5e9; color: #2e7d32;
+              padding: 2px 8px; border-radius: 20px; font-weight: 500; white-space: nowrap; }}
+    .mo-badge {{ background: #e8edf5; color: #3a5a8c; }}
+    .topic-list {{ list-style: none; padding: 0; }}
+    .topic-list li {{ font-size: 13px; color: #444; padding: 3px 0;
+                      border-bottom: 1px solid #f0f0f0; }}
+    .topic-list li:last-child {{ border-bottom: none; }}
+    .msg-count {{ color: #aaa; font-size: 12px; }}
+    .topic-list a {{ color: #2563ab; text-decoration: none; }}
+    .topic-list a:hover {{ text-decoration: underline; }}
+    .quiet-list {{ font-size: 13px; color: #999; line-height: 1.7; }}
+    .mo-note {{ font-size: 12px; color: #8a9ab5; font-style: italic; }}
+    .error-row {{ font-size: 13px; color: #c0392b; margin-top: 4px; }}
+    .footer {{ font-size: 12px; color: #aaa; text-align: center; margin-top: 2rem; }}
+  </style>
 </head>
 <body>
-<div class="container">
-  <h1>&#128243; Groups.io Digest</h1>
-  <p class="meta">{window_str} &nbsp;&middot;&nbsp; Generated {date_str}</p>
-  <div class="stats">
-    <div class="stat"><strong>{total_groups}</strong> groups checked</div>
-    <div class="stat"><strong>{len(active)}</strong> active</div>
-    <div class="stat"><strong>{total_msgs}</strong> total messages</div>
-    <div class="stat"><strong>{len(quiet)}</strong> quiet</div>
+  <div class="container">
+    <h1>&#128243; Groups.io Digest</h1>
+    <p class="meta">{window_str} &nbsp;&middot;&nbsp; Generated {date_str}</p>
+    <div class="stats">
+      <div class="stat"><strong>{total_groups}</strong> groups checked</div>
+      <div class="stat"><strong>{len(active)}</strong> active</div>
+      <div class="stat"><strong>{total_msgs}</strong> total messages</div>
+      <div class="stat"><strong>{len(quiet)}</strong> quiet</div>
+    </div>
+    {active_rows}
+    {members_only_rows}
+    {quiet_section}
+    {error_section}
+    <p class="footer">groupsio_digest.py &nbsp;&middot;&nbsp; {date_str}</p>
   </div>
-  {active_rows}
-  {quiet_section}
-  {error_section}
-  <p class="footer">groupsio_digest.py &nbsp;&middot;&nbsp; {date_str}</p>
-</div>
 </body>
 </html>"""
     return html
 
 
 def build_text_report(results, lookback_days, generated_at):
-    active = [r for r in results if r.get("data") and r["data"]["total"] > 0]
-    quiet  = [r for r in results if r.get("data") and r["data"]["total"] == 0]
-    errors = [r for r in results if r.get("error")]
+    active        = [r for r in results if r.get("data") and r["data"]["total"] > 0 and not r["data"].get("members_only")]
+    members_only  = [r for r in results if r.get("data") and r["data"].get("members_only")]
+    quiet         = [r for r in results if r.get("data") and r["data"]["total"] == 0 and not r["data"].get("members_only")]
+    errors        = [r for r in results if r.get("error")]
+
     active.sort(key=lambda r: r["data"]["total"], reverse=True)
 
     date_str   = generated_at.strftime("%Y-%m-%d %H:%M")
@@ -258,14 +288,24 @@ def build_text_report(results, lookback_days, generated_at):
     ]
 
     for r in active:
-        name  = r["group"]["name"]
-        total = r["data"]["total"]
+        name   = r["group"]["name"]
+        total  = r["data"]["total"]
         topics = r["data"]["topics"]
         lines.append(f"{'─' * 60}")
         lines.append(f"  {name}  [{total} message{'s' if total != 1 else ''}]")
         lines.append(f"  {group_url(r['group'])}")
         for t in topics[:20]:
             lines.append(f"    • {t['subject']}  ({t['count']})")
+        lines.append("")
+
+    if members_only:
+        lines.append("─" * 60)
+        lines.append("  MEMBERS ONLY (topic details not shown):")
+        for r in members_only:
+            total = r["data"]["total"]
+            count_str = f"{total} msg{'s' if total != 1 else ''}" if total > 0 else "no activity"
+            lines.append(f"  {r['group']['name']}  [{count_str}]")
+            lines.append(f"  {group_url(r['group'])}")
         lines.append("")
 
     if quiet:
@@ -279,6 +319,7 @@ def build_text_report(results, lookback_days, generated_at):
         lines += [chr(9472) * 60, "  RESTRICTED (owner disabled API access):"]
         lines.append("  " + ", ".join(r["group"]["name"] for r in restricted))
         lines.append("")
+
     if errors:
         lines.append("─" * 60)
         lines.append("  ERRORS:")
@@ -334,7 +375,10 @@ def main():
             continue
         try:
             data = fetch_group_topics(g, API_KEY, LOOKBACK_DAYS)
-            if data["total"] > 0:
+            if data.get("members_only"):
+                count_str = f"{data['total']} messages" if data["total"] > 0 else "no activity"
+                print(f"members only ({count_str})")
+            elif data["total"] > 0:
                 print(f"{data['total']} messages, {len(data['topics'])} topics")
             else:
                 print("quiet")
@@ -369,8 +413,8 @@ def main():
     webbrowser.open(html_path.as_uri())
 
     print(f"\nFiles saved:")
-    print(f"  HTML: {html_path}")
-    print(f"  Text: {txt_path}")
+    print(f"  HTML:  {html_path}")
+    print(f"  Text:  {txt_path}")
     print()
     input("Press Enter to exit...")
 
