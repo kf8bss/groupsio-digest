@@ -4,7 +4,7 @@ Personal config for groupsio_digest_public.py — NOT committed to git.
 
 from pathlib import Path
 
-API_KEY = "e68e31d8ea2707d36b05eb5bc2b7f0044c4ef5fa0f1a3dbed642c735916afde"   # From groups.io/settings/apikeys
+API_KEY = "e68e31d8ea2707d36b05eb5bc2b7f0044c4ef5fa0f1a3dbed642c735916afde7"   # From groups.io/settings/apikeys
 
 LOOKBACK_DAYS = 7               # How many days back to check
 
