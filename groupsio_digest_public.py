@@ -16,19 +16,29 @@ import datetime
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Configuration — loaded from config.py (untracked, not committed to git)
+# Configuration
 # ---------------------------------------------------------------------------
-# See config.example.py for the expected structure. Copy it to config.py
-# and fill in your real API key and group list; config.py is gitignored
-# so it will never be committed.
+# Local/manual runs: values come from config.py (untracked, not committed).
+# CI/scheduled runs (e.g. GitHub Actions): values come from environment
+# variables instead, sourced from repo secrets. Nothing secret ever needs
+# to be committed for either path.
 
-try:
-    from config import API_KEY, LOOKBACK_DAYS, OUTPUT_DIR, GROUPS
-except ImportError:
-    print("ERROR: config.py not found.")
-    print("       Copy config.example.py to config.py and fill in your")
-    print("       API key and group list before running this script.")
-    sys.exit(1)
+_env_key = os.environ.get("GROUPSIO_API_KEY")
+_env_groups = os.environ.get("GROUPSIO_GROUPS_JSON")
+
+if _env_key and _env_groups:
+    API_KEY = _env_key
+    GROUPS = json.loads(_env_groups)
+    LOOKBACK_DAYS = int(os.environ.get("GROUPSIO_LOOKBACK_DAYS", "7"))
+    OUTPUT_DIR = Path(os.environ.get("GROUPSIO_OUTPUT_DIR", "."))
+else:
+    try:
+        from config import API_KEY, LOOKBACK_DAYS, OUTPUT_DIR, GROUPS
+    except ImportError:
+        print("ERROR: config.py not found.")
+        print("       Copy config.example.py to config.py and fill in your")
+        print("       API key and group list before running this script.")
+        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -398,6 +408,7 @@ def main():
 
     html_content = build_html_report(results, LOOKBACK_DAYS, now)
     html_path.write_text(html_content, encoding="utf-8")
+    (OUTPUT_DIR / "index.html").write_text(html_content, encoding="utf-8")
 
     txt_content = build_text_report(results, LOOKBACK_DAYS, now)
     txt_path.write_text(txt_content, encoding="utf-8")
@@ -408,9 +419,10 @@ def main():
     print()
     print(txt_content)
 
-    # Open HTML in browser
-    print(f"\nOpening HTML report in browser...")
-    webbrowser.open(html_path.as_uri())
+    # Open HTML in browser (skip when running headless, e.g. GitHub Actions)
+    if not os.environ.get("CI"):
+        print(f"\nOpening HTML report in browser...")
+        webbrowser.open(html_path.as_uri())
 
     print(f"\nFiles saved:")
     print(f"  HTML:  {html_path}")
