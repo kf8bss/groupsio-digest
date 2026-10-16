@@ -5,7 +5,7 @@ permissions:
 
 on:
   schedule:
-    # 11:00 UTC ≈ 7:00 AM Eastern (shifts to 6:00 AM during EDT — adjust if you care about exact local time)
+    # 11:00 UTC ≈ 6:00 AM Eastern (shifts to 7:00 AM during EDT — adjust if you care about exact local time)
     - cron: "0 11 * * *"
   workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
 
