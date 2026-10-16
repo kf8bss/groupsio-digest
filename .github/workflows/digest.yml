@@ -1,5 +1,8 @@
 name: Run Groups.io Digest
 
+permissions:
+  contents: write   # needed for the keep-alive push
+
 on:
   schedule:
     # 11:00 UTC ≈ 7:00 AM Eastern (shifts to 6:00 AM during EDT — adjust if you care about exact local time)
@@ -50,3 +53,14 @@ jobs:
           git add -A
           git diff --quiet --cached || git commit -m "Update digest report $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
+
+      - name: Keep-alive (prevent 60-day scheduled-workflow disable)
+        run: |
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          if [ $(( (now - last) / 86400 )) -ge 50 ]; then
+            git config user.name "groupsio-digest-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git commit --allow-empty -m "Keep-alive: reset 60-day inactivity timer"
+            git push
+          fi
