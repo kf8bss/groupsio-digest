@@ -29,7 +29,7 @@ jobs:
         run: python groupsio_digest_public.py
 
       - name: Check out site repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: kf8bss/groupsio-digest-site
           token: ${{ secrets.SITE_REPO_TOKEN }}
